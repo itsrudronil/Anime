@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>m3u8 ভিডিও প্লেয়ার</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; }
+        input { width: 80%; padding: 10px; margin-bottom: 10px; }
+        button { padding: 10px 20px; cursor: pointer; }
+        #video { width: 100%; max-width: 800px; margin-top: 20px; background: #000; }
+    </style>
+</head>
+<body>
+
+    <h2>m3u8 ভিডিও প্লেয়ার</h2>
+    
+    <!-- ইনপুট বক্স -->
+    <input type="text" id="urlInput" placeholder="এখানে m3u8 লিংকটি পেস্ট করুন...">
+    <br>
+    <button onclick="playVideo()">ভিডিও চালান</button>
+
+    <br>
+    <video id="video" controls></video>
+
+    <script>
+        var video = document.getElementById('video');
+        var hls;
+
+        function playVideo() {
+            var videoSrc = document.getElementById('urlInput').value;
+            
+            if (!videoSrc) {
+                alert("দয়া করে একটি লিংক দিন!");
+                return;
+            }
+
+            // আগের ভিডিও থাকলে তা বন্ধ করা
+            if (hls) {
+                hls.destroy();
+            }
+
+            if (Hls.isSupported()) {
+                hls = new Hls();
+                hls.loadSource(videoSrc);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play();
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = videoSrc;
+                video.addEventListener('loadedmetadata', function() {
+                    video.play();
+                });
+            } else {
+                alert("আপনার ব্রাউজারে এই ভিডিও ফরম্যাট সাপোর্ট করছে না।");
+            }
+        }
+    </script>
+</body>
+</html>
