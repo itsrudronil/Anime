@@ -6,8 +6,8 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; }
-        select { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
-        video { width: 100%; max-width: 800px; background: black; }
+        select { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; background: #1e293b; color: white; }
+        video { width: 100%; max-width: 800px; background: black; display: block; margin: 0 auto; }
     </style>
 </head>
 <body>
@@ -15,7 +15,7 @@
     <h2>Xtream Codes Player</h2>
     
     <select id="catSelect" onchange="loadChannels()">
-        <option>ক্যাটাগরি সিলেক্ট করুন...</option>
+        <option>ক্যাটাগরি লোড হচ্ছে...</option>
     </select>
     
     <select id="channelSelect" onchange="playChannel()">
@@ -25,32 +25,41 @@
     <video id="video" controls autoplay></video>
 
     <script>
-        // আপনার Xtream Code এর ডিটেইলস এখানে বসান
+        // আপনার ডিটেইলস এখানে বসান
         const BASE_URL = 'http://dvltv.cc:80';
-        const USERNAME = 'talkulderrudronil';
+        const USERNAME = 'talukderrudronil';
         const PASSWORD = 'talRudronil8';
 
-        // ১. ক্যাটাগরি লোড করা
-        async function loadCategories() {
-            const url = `${BASE_URL}/player_api.php?username=${USERNAME}&password=${PASSWORD}&action=get_live_categories`;
-            const response = await fetch(url);
+        // প্রক্সি ফাংশন (API এরর সলভ করার জন্য)
+        async function fetchProxy(url) {
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+            const response = await fetch(proxyUrl);
             const data = await response.json();
-            
-            const catSelect = document.getElementById('catSelect');
-            data.forEach(cat => {
-                let opt = document.createElement('option');
-                opt.value = cat.category_id;
-                opt.innerHTML = cat.category_name;
-                catSelect.appendChild(opt);
-            });
+            return JSON.parse(data.contents);
         }
 
-        // ২. ক্যাটাগরি অনুযায়ী চ্যানেল লোড করা
+        async function loadCategories() {
+            try {
+                const url = `${BASE_URL}/player_api.php?username=${USERNAME}&password=${PASSWORD}&action=get_live_categories`;
+                const data = await fetchProxy(url);
+                
+                const catSelect = document.getElementById('catSelect');
+                catSelect.innerHTML = '<option>ক্যাটাগরি সিলেক্ট করুন</option>';
+                data.forEach(cat => {
+                    let opt = document.createElement('option');
+                    opt.value = cat.category_id;
+                    opt.innerHTML = cat.category_name;
+                    catSelect.appendChild(opt);
+                });
+            } catch (e) {
+                alert("ক্যাটাগরি লোড হতে সমস্যা হচ্ছে। সার্ভার বা ইন্টারনেট চেক করুন।");
+            }
+        }
+
         async function loadChannels() {
             const catId = document.getElementById('catSelect').value;
             const url = `${BASE_URL}/player_api.php?username=${USERNAME}&password=${PASSWORD}&action=get_live_streams&category_id=${catId}`;
-            const response = await fetch(url);
-            const data = await response.json();
+            const data = await fetchProxy(url);
             
             const chanSelect = document.getElementById('channelSelect');
             chanSelect.innerHTML = '<option>চ্যানেল সিলেক্ট করুন...</option>';
@@ -62,7 +71,6 @@
             });
         }
 
-        // ৩. ভিডিও প্লে করা
         function playChannel() {
             const streamId = document.getElementById('channelSelect').value;
             const videoUrl = `${BASE_URL}/live/${USERNAME}/${PASSWORD}/${streamId}.m3u8`;
