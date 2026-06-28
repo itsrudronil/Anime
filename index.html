@@ -12,10 +12,10 @@
 </head>
 <body>
 
-    <h1>বাংলাদেশি লাইভ টিভি</h1>
+    <h1>Live TV Portal</h1>
     
     <select id="channelSelect" onchange="playSelected()">
-        <option>চ্যানেল লোড হচ্ছে...</option>
+        <option>চ্যানেল সিলেক্ট করুন</option>
     </select>
     <br>
     <video id="video" controls autoplay></video>
@@ -28,12 +28,10 @@
 
         async function fetchM3U() {
             try {
-                // সরাসরি GitHub Raw লিংক ফেচ করা হচ্ছে
-                const response = await fetch(M3U_URL);
+                // এখানে corsproxy ব্যবহার করা হয়েছে যাতে ব্রাউজার ব্লক না করে
+                const response = await fetch('https://corsproxy.io/?' + encodeURIComponent(M3U_URL));
                 const text = await response.text();
-                
                 const lines = text.split('\n');
-                select.innerHTML = '<option value="">চ্যানেল সিলেক্ট করুন</option>';
                 
                 for (let i = 0; i < lines.length; i++) {
                     if (lines[i].startsWith('#EXTINF')) {
@@ -47,18 +45,17 @@
                         }
                     }
                 }
-            } catch (e) {
-                alert("চ্যানেল লিস্ট লোড হতে সমস্যা হয়েছে। ইন্টারনেট সংযোগ চেক করুন।");
-            }
+            } catch (e) { alert("লিংক লোড করতে সমস্যা হয়েছে!"); }
         }
 
         function playSelected() {
             const url = select.value;
-            if (!url) return;
+            if (!url || url === 'চ্যানেল সিলেক্ট করুন') return;
             
             if (hls) hls.destroy();
             hls = new Hls();
-            hls.loadSource(url);
+            // ভিডিও প্লে করার সময়ও প্রক্সি ব্যবহার করা হচ্ছে
+            hls.loadSource('https://corsproxy.io/?' + encodeURIComponent(url));
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
         }
