@@ -2,61 +2,71 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>m3u8 ভিডিও প্লেয়ার</title>
+    <title>Live TV Player</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; }
-        input { width: 80%; padding: 10px; margin-bottom: 10px; }
-        button { padding: 10px 20px; cursor: pointer; }
-        #video { width: 100%; max-width: 800px; margin-top: 20px; background: #000; }
+        body { font-family: Arial; background: #1a1a1a; color: white; padding: 20px; text-align: center; }
+        #controls { margin-bottom: 20px; }
+        select { width: 300px; padding: 10px; border-radius: 5px; }
+        video { width: 100%; max-width: 800px; background: black; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <h2>m3u8 ভিডিও প্লেয়ার</h2>
-    
-    <!-- ইনপুট বক্স -->
-    <input type="text" id="urlInput" placeholder="এখানে m3u8 লিংকটি পেস্ট করুন...">
-    <br>
-    <button onclick="playVideo()">ভিডিও চালান</button>
+    <h1>Live TV Portal</h1>
+    <div id="controls">
+        <select id="channelSelect" onchange="playSelected()">
+            <option>চ্যানেল লোড হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...</option>
+        </select>
+    </div>
 
-    <br>
-    <video id="video" controls></video>
+    <video id="video" controls autoplay></video>
 
     <script>
-        var video = document.getElementById('video');
-        var hls;
+        const M3U_URL = 'https://id.gd/yQuS1g.m3u'; // আপনার M3U লিংক এখানে দিন
+        const video = document.getElementById('video');
+        const select = document.getElementById('channelSelect');
+        let hls;
 
-        function playVideo() {
-            var videoSrc = document.getElementById('urlInput').value;
-            
-            if (!videoSrc) {
-                alert("দয়া করে একটি লিংক দিন!");
-                return;
-            }
-
-            // আগের ভিডিও থাকলে তা বন্ধ করা
-            if (hls) {
-                hls.destroy();
-            }
-
-            if (Hls.isSupported()) {
-                hls = new Hls();
-                hls.loadSource(videoSrc);
-                hls.attachMedia(video);
-                hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    video.play();
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = videoSrc;
-                video.addEventListener('loadedmetadata', function() {
-                    video.play();
-                });
-            } else {
-                alert("আপনার ব্রাউজারে এই ভিডিও ফরম্যাট সাপোর্ট করছে না।");
+        async function fetchM3U() {
+            try {
+                // CORS বাইপাস করার জন্য Proxy ব্যবহার করা হচ্ছে
+                const response = await fetch('https://corsproxy.io/?' + encodeURIComponent(M3U_URL));
+                const text = await response.text();
+                parseM3U(text);
+            } catch (e) {
+                alert("চ্যানেল লিস্ট লোড করতে সমস্যা হয়েছে!");
             }
         }
+
+        function parseM3U(data) {
+            const lines = data.split('\n');
+            select.innerHTML = '<option>চ্যানেল সিলেক্ট করুন</option>';
+            
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].startsWith('#EXTINF')) {
+                    const name = lines[i].split(',')[1];
+                    const url = lines[i + 1];
+                    let option = document.createElement('option');
+                    option.text = name;
+                    option.value = url;
+                    select.add(option);
+                }
+            }
+        }
+
+        function playSelected() {
+            const url = select.value;
+            if (!url) return;
+
+            if (hls) hls.destroy();
+            hls = new Hls();
+            hls.loadSource(url);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+        }
+
+        fetchM3U();
     </script>
 </body>
 </html>
