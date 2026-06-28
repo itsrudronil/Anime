@@ -16,8 +16,24 @@
             flex-direction: column; 
             align-items: center; 
         }
-        h1 { margin-bottom: 20px; font-size: 26px; color: #38bdf8; }
+        h1 { margin-bottom: 20px; font-size: 26px; color: #38bdf8; text-align: center; }
         .container { width: 100%; max-width: 800px; }
+        
+        /* সার্চ বক্সের ডিজাইন */
+        input[type="text"] {
+            width: 100%; 
+            padding: 12px; 
+            margin-bottom: 10px; 
+            border-radius: 8px; 
+            border: 1px solid #334155; 
+            background: #1e293b; 
+            color: white; 
+            font-size: 16px; 
+            outline: none; 
+            box-sizing: border-box;
+        }
+        input[type="text"]::placeholder { color: #94a3b8; }
+        
         select { 
             width: 100%; 
             padding: 12px; 
@@ -29,11 +45,13 @@
             font-size: 16px; 
             cursor: pointer; 
             outline: none; 
+            box-sizing: border-box;
         }
+        
         .video-wrapper { 
             position: relative; 
             width: 100%; 
-            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+            padding-top: 56.25%;
             background: #000; 
             border-radius: 12px; 
             overflow: hidden; 
@@ -60,6 +78,8 @@
     <div class="container">
         <h1>লাইভ টিভি পোর্টাল</h1>
         
+        <input type="text" id="searchInput" placeholder="চ্যানেল সার্চ করুন (যেমন: Star, Sports...)" onkeyup="filterChannels()">
+        
         <select id="channelSelect" onchange="playSelected()">
             <option value="">চ্যানেল লোড হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...</option>
         </select>
@@ -72,24 +92,24 @@
     </div>
 
     <script>
-                const M3U_URL = 'https://raw.githubusercontent.com/bugsfreeweb/LiveTVCollector/refs/heads/main/LiveTV/Bangladesh/LiveTV.m3u';
+        const M3U_URL = 'https://raw.githubusercontent.com/bugsfreeweb/LiveTVCollector/refs/heads/main/LiveTV/Bangladesh/LiveTV.m3u';
         
         const video = document.getElementById('video');
         const select = document.getElementById('channelSelect');
+        const searchInput = document.getElementById('searchInput');
         const errorMsg = document.getElementById('errorMsg');
+        
         let hls;
+        let allChannels = []; // সব চ্যানেল সেভ করে রাখার জন্য অ্যারে
 
         async function fetchM3U() {
             try {
-                // ধাপ ১: সরাসরি চেষ্টা করা (GitHub Raw সাধারণত CORS অ্যালাউ করে)
                 let response = await fetch(M3U_URL + '?t=' + new Date().getTime());
                 let text = '';
 
                 if (response.ok) {
                     text = await response.text();
                 } else {
-                    // ধাপ ২: সরাসরি কাজ না করলে Proxy ব্যবহার করা
-                    console.log("Direct fetch failed, trying proxy...");
                     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(M3U_URL)}`;
                     response = await fetch(proxyUrl);
                     const data = await response.json();
@@ -103,8 +123,7 @@
                 parseM3U(text);
 
             } catch (e) {
-                console.error("Error loading M3U:", e);
-                errorMsg.innerText = "চ্যানেল লিস্ট লোড হতে সমস্যা হয়েছে। অরিজিনাল লিংকটি হয়তো কাজ করছে না।";
+                errorMsg.innerText = "চ্যানেল লিস্ট লোড হতে সমস্যা হয়েছে। ইন্টারনেট চেক করে রিফ্রেশ করুন।";
                 select.innerHTML = '<option value="">লোড ফেইলড</option>';
             }
         }
@@ -112,10 +131,8 @@
         function parseM3U(data) {
             if (!data) return;
             const lines = data.split('\n');
-            select.innerHTML = '<option value="">চ্যানেল সিলেক্ট করুন</option>';
-            
+            allChannels = []; // আগের ডেটা ক্লিয়ার করা
             let currentName = '';
-            let channelCount = 0;
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim();
@@ -123,19 +140,42 @@
                     const parts = line.split(',');
                     currentName = parts.length > 1 ? parts[1].trim() : 'Unknown Channel';
                 } else if (line.startsWith('http')) {
-                    let option = document.createElement('option');
-                    option.text = currentName;
-                    option.value = line;
-                    select.add(option);
+                    // অ্যারেতে সেভ করা হচ্ছে
+                    allChannels.push({ name: currentName, url: line });
                     currentName = ''; 
-                    channelCount++;
                 }
             }
 
-            if (channelCount === 0) {
+            if (allChannels.length === 0) {
                 errorMsg.innerText = "ফাইলটি লোড হয়েছে কিন্তু কোনো চ্যানেল পাওয়া যায়নি।";
                 select.innerHTML = '<option value="">চ্যানেল নেই</option>';
+            } else {
+                updateSelect(allChannels); // ড্রপডাউনে চ্যানেল বসানো
             }
+        }
+
+        // ড্রপডাউন আপডেট করার ফাংশন
+        function updateSelect(list) {
+            select.innerHTML = '<option value="">চ্যানেল সিলেক্ট করুন</option>';
+            list.forEach(channel => {
+                let option = document.createElement('option');
+                option.text = channel.name;
+                option.value = channel.url;
+                select.add(option);
+            });
+            
+            if(list.length === 0) {
+                select.innerHTML = '<option value="">কোনো চ্যানেল পাওয়া যায়নি</option>';
+            }
+        }
+
+        // সার্চ ফিল্টার করার ফাংশন
+        function filterChannels() {
+            const query = searchInput.value.toLowerCase();
+            const filteredList = allChannels.filter(channel => 
+                channel.name.toLowerCase().includes(query)
+            );
+            updateSelect(filteredList);
         }
 
         function playSelected() {
@@ -160,7 +200,7 @@
                 
                 hls.on(Hls.Events.MANIFEST_PARSED, function() {
                     video.play().catch(() => {
-                        console.log("অটোপ্লে ব্রাউজার থেকে ব্লক করা হয়েছে।");
+                        console.log("অটোপ্লে ব্লক করা হয়েছে।");
                     });
                 });
 
@@ -189,7 +229,6 @@
         }
 
         fetchM3U();
-
     </script>
 </body>
 </html>
