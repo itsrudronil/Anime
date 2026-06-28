@@ -30,15 +30,17 @@
         const USERNAME = 'talukderrudronil';
         const PASSWORD = 'talRudronil8';
 
-        // নতুন প্রক্সি মেথড: এটি সব ধরণের CORS ব্লকিং বাইপাস করবে
-        async function fetchAPI(action, extraParams = '') {
-            const url = `${BASE_URL}/player_api.php?username=${USERNAME}&password=${PASSWORD}&action=${action}${extraParams}`;
-            // AllOrigins এর চেয়েও শক্তিশালী প্রক্সি ব্যবহার করা হচ্ছে
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-            
-            const response = await fetch(proxyUrl);
-            return await response.json();
-        }
+        // আগের fetchAPI ফাংশনটি সরিয়ে এটি বসান
+async function fetchAPI(action, extraParams = '') {
+    const url = `${BASE_URL}/player_api.php?username=${USERNAME}&password=${PASSWORD}&action=${action}${extraParams}`;
+    
+    // আপনার নিজের সার্ভারের proxy.php ব্যবহার করা হচ্ছে
+    const proxyUrl = `proxy.php?url=${encodeURIComponent(url)}`;
+    
+    const response = await fetch(proxyUrl);
+    return await response.json();
+}
+
 
         async function loadCategories() {
             try {
