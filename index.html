@@ -2,233 +2,81 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live TV Portal</title>
+    <title>Xtream Codes Player</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: #0f172a; 
-            color: #f8fafc; 
-            margin: 0; 
-            padding: 20px; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-        }
-        h1 { margin-bottom: 20px; font-size: 26px; color: #38bdf8; text-align: center; }
-        .container { width: 100%; max-width: 800px; }
-        
-        /* সার্চ বক্সের ডিজাইন */
-        input[type="text"] {
-            width: 100%; 
-            padding: 12px; 
-            margin-bottom: 10px; 
-            border-radius: 8px; 
-            border: 1px solid #334155; 
-            background: #1e293b; 
-            color: white; 
-            font-size: 16px; 
-            outline: none; 
-            box-sizing: border-box;
-        }
-        input[type="text"]::placeholder { color: #94a3b8; }
-        
-        select { 
-            width: 100%; 
-            padding: 12px; 
-            margin-bottom: 20px; 
-            border-radius: 8px; 
-            border: 1px solid #334155; 
-            background: #1e293b; 
-            color: white; 
-            font-size: 16px; 
-            cursor: pointer; 
-            outline: none; 
-            box-sizing: border-box;
-        }
-        
-        .video-wrapper { 
-            position: relative; 
-            width: 100%; 
-            padding-top: 56.25%;
-            background: #000; 
-            border-radius: 12px; 
-            overflow: hidden; 
-            border: 2px solid #334155; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-        video { 
-            position: absolute; 
-            top: 0; 
-            left: 0; 
-            width: 100%; 
-            height: 100%; 
-        }
-        .error-msg { 
-            color: #ef4444; 
-            margin-top: 15px; 
-            font-size: 14px; 
-            text-align: center; 
-            font-weight: bold;
-        }
+        body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; }
+        select { width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+        video { width: 100%; max-width: 800px; background: black; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>লাইভ টিভি পোর্টাল</h1>
-        
-        <input type="text" id="searchInput" placeholder="চ্যানেল সার্চ করুন (যেমন: Star, Sports...)" onkeyup="filterChannels()">
-        
-        <select id="channelSelect" onchange="playSelected()">
-            <option value="">চ্যানেল লোড হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...</option>
-        </select>
-        
-        <div class="video-wrapper">
-            <video id="video" controls></video>
-        </div>
-        
-        <div id="errorMsg" class="error-msg"></div>
-    </div>
+
+    <h2>Xtream Codes Player</h2>
+    
+    <select id="catSelect" onchange="loadChannels()">
+        <option>ক্যাটাগরি সিলেক্ট করুন...</option>
+    </select>
+    
+    <select id="channelSelect" onchange="playChannel()">
+        <option>চ্যানেল সিলেক্ট করুন...</option>
+    </select>
+
+    <video id="video" controls autoplay></video>
 
     <script>
-        const M3U_URL = 'https://raw.githubusercontent.com/bugsfreeweb/LiveTVCollector/refs/heads/main/LiveTV/Bangladesh/LiveTV.m3u';
-        
-        const video = document.getElementById('video');
-        const select = document.getElementById('channelSelect');
-        const searchInput = document.getElementById('searchInput');
-        const errorMsg = document.getElementById('errorMsg');
-        
-        let hls;
-        let allChannels = []; // সব চ্যানেল সেভ করে রাখার জন্য অ্যারে
+        // আপনার Xtream Code এর ডিটেইলস এখানে বসান
+        const BASE_URL = 'https://starter.nvisionbd.net';
+        const USERNAME = 'talkulderrudronil';
+        const PASSWORD = 'talRudronil8';
 
-        async function fetchM3U() {
-            try {
-                let response = await fetch(M3U_URL + '?t=' + new Date().getTime());
-                let text = '';
-
-                if (response.ok) {
-                    text = await response.text();
-                } else {
-                    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(M3U_URL)}`;
-                    response = await fetch(proxyUrl);
-                    const data = await response.json();
-                    if (data && data.contents) {
-                        text = data.contents;
-                    } else {
-                        throw new Error('Proxy failed to load content');
-                    }
-                }
-                
-                parseM3U(text);
-
-            } catch (e) {
-                errorMsg.innerText = "চ্যানেল লিস্ট লোড হতে সমস্যা হয়েছে। ইন্টারনেট চেক করে রিফ্রেশ করুন।";
-                select.innerHTML = '<option value="">লোড ফেইলড</option>';
-            }
-        }
-
-        function parseM3U(data) {
-            if (!data) return;
-            const lines = data.split('\n');
-            allChannels = []; // আগের ডেটা ক্লিয়ার করা
-            let currentName = '';
-
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (line.startsWith('#EXTINF')) {
-                    const parts = line.split(',');
-                    currentName = parts.length > 1 ? parts[1].trim() : 'Unknown Channel';
-                } else if (line.startsWith('http')) {
-                    // অ্যারেতে সেভ করা হচ্ছে
-                    allChannels.push({ name: currentName, url: line });
-                    currentName = ''; 
-                }
-            }
-
-            if (allChannels.length === 0) {
-                errorMsg.innerText = "ফাইলটি লোড হয়েছে কিন্তু কোনো চ্যানেল পাওয়া যায়নি।";
-                select.innerHTML = '<option value="">চ্যানেল নেই</option>';
-            } else {
-                updateSelect(allChannels); // ড্রপডাউনে চ্যানেল বসানো
-            }
-        }
-
-        // ড্রপডাউন আপডেট করার ফাংশন
-        function updateSelect(list) {
-            select.innerHTML = '<option value="">চ্যানেল সিলেক্ট করুন</option>';
-            list.forEach(channel => {
-                let option = document.createElement('option');
-                option.text = channel.name;
-                option.value = channel.url;
-                select.add(option);
+        // ১. ক্যাটাগরি লোড করা
+        async function loadCategories() {
+            const url = `${BASE_URL}/player_api.php?username=${USERNAME}&password=${PASSWORD}&action=get_live_categories`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            const catSelect = document.getElementById('catSelect');
+            data.forEach(cat => {
+                let opt = document.createElement('option');
+                opt.value = cat.category_id;
+                opt.innerHTML = cat.category_name;
+                catSelect.appendChild(opt);
             });
-            
-            if(list.length === 0) {
-                select.innerHTML = '<option value="">কোনো চ্যানেল পাওয়া যায়নি</option>';
-            }
         }
 
-        // সার্চ ফিল্টার করার ফাংশন
-        function filterChannels() {
-            const query = searchInput.value.toLowerCase();
-            const filteredList = allChannels.filter(channel => 
-                channel.name.toLowerCase().includes(query)
-            );
-            updateSelect(filteredList);
+        // ২. ক্যাটাগরি অনুযায়ী চ্যানেল লোড করা
+        async function loadChannels() {
+            const catId = document.getElementById('catSelect').value;
+            const url = `${BASE_URL}/player_api.php?username=${USERNAME}&password=${PASSWORD}&action=get_live_streams&category_id=${catId}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            const chanSelect = document.getElementById('channelSelect');
+            chanSelect.innerHTML = '<option>চ্যানেল সিলেক্ট করুন...</option>';
+            data.forEach(stream => {
+                let opt = document.createElement('option');
+                opt.value = stream.stream_id;
+                opt.innerHTML = stream.name;
+                chanSelect.appendChild(opt);
+            });
         }
 
-        function playSelected() {
-            const url = select.value;
-            errorMsg.innerText = ''; 
+        // ৩. ভিডিও প্লে করা
+        function playChannel() {
+            const streamId = document.getElementById('channelSelect').value;
+            const videoUrl = `${BASE_URL}/live/${USERNAME}/${PASSWORD}/${streamId}.m3u8`;
+            const video = document.getElementById('video');
             
-            if (!url) return;
-
-            if (hls) {
-                hls.destroy();
-            }
-
             if (Hls.isSupported()) {
-                hls = new Hls({
-                    debug: false,
-                    enableWorker: true,
-                    lowLatencyMode: true
-                });
-                
-                hls.loadSource(url);
+                const hls = new Hls();
+                hls.loadSource(videoUrl);
                 hls.attachMedia(video);
-                
-                hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    video.play().catch(() => {
-                        console.log("অটোপ্লে ব্লক করা হয়েছে।");
-                    });
-                });
-
-                hls.on(Hls.Events.ERROR, function (event, data) {
-                    if (data.fatal) {
-                        switch (data.type) {
-                            case Hls.ErrorTypes.NETWORK_ERROR:
-                                errorMsg.innerText = "এই চ্যানেলটির সার্ভার বর্তমানে ডাউন আছে বা ব্রাউজারে ব্লক করা হয়েছে।";
-                                hls.destroy();
-                                break;
-                            case Hls.ErrorTypes.MEDIA_ERROR:
-                                hls.recoverMediaError();
-                                break;
-                            default:
-                                hls.destroy();
-                                break;
-                        }
-                    }
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = url;
-                video.addEventListener('loadedmetadata', function() {
-                    video.play();
-                });
+                video.play();
             }
         }
 
-        fetchM3U();
+        loadCategories();
     </script>
 </body>
 </html>
