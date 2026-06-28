@@ -2,11 +2,12 @@
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
-    <title>Live TV Player</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live TV Portal</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
-        body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; text-align: center; }
-        select { width: 90%; max-width: 400px; padding: 12px; margin-bottom: 15px; border-radius: 8px; background: #1e293b; color: white; border: 1px solid #334155; }
+        body { font-family: sans-serif; background: #0f172a; color: white; padding: 15px; text-align: center; }
+        select { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px; background: #1e293b; color: white; border: 1px solid #334155; }
         video { width: 100%; max-width: 800px; background: black; display: block; margin: 20px auto; border-radius: 8px; border: 2px solid #334155; }
     </style>
 </head>
@@ -15,7 +16,7 @@
     <h2>Live TV Player</h2>
     
     <select id="catSelect" onchange="loadChannels()">
-        <option>ক্যাটাগরি লোড হচ্ছে...</option>
+        <option>ক্যাটাগরি সিলেক্ট করুন...</option>
     </select>
     
     <select id="channelSelect" onchange="playChannel()">
@@ -29,17 +30,19 @@
         const USERNAME = 'talukderrudronil';
         const PASSWORD = 'talRudronil8';
 
-        async function fetchProxy(url) {
-            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+        // নতুন প্রক্সি মেথড: এটি সব ধরণের CORS ব্লকিং বাইপাস করবে
+        async function fetchAPI(action, extraParams = '') {
+            const url = `${BASE_URL}/player_api.php?username=${USERNAME}&password=${PASSWORD}&action=${action}${extraParams}`;
+            // AllOrigins এর চেয়েও শক্তিশালী প্রক্সি ব্যবহার করা হচ্ছে
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+            
             const response = await fetch(proxyUrl);
-            const data = await response.json();
-            return JSON.parse(data.contents);
+            return await response.json();
         }
 
         async function loadCategories() {
             try {
-                const url = `${BASE_URL}/player_api.php?username=${USERNAME}&password=${PASSWORD}&action=get_live_categories`;
-                const data = await fetchProxy(url);
+                const data = await fetchAPI('get_live_categories');
                 const catSelect = document.getElementById('catSelect');
                 catSelect.innerHTML = '<option>ক্যাটাগরি সিলেক্ট করুন</option>';
                 data.forEach(cat => {
@@ -49,14 +52,14 @@
                     catSelect.appendChild(opt);
                 });
             } catch (e) {
-                alert("ক্যাটাগরি লোড হচ্ছে না! ইন্টারনেটে সমস্যা হতে পারে।");
+                console.error(e);
+                alert("সার্ভার থেকে ডেটা আসছে না। দয়া করে ইন্টারনেট কানেকশন চেক করুন।");
             }
         }
 
         async function loadChannels() {
             const catId = document.getElementById('catSelect').value;
-            const url = `${BASE_URL}/player_api.php?username=${USERNAME}&password=${PASSWORD}&action=get_live_streams&category_id=${catId}`;
-            const data = await fetchProxy(url);
+            const data = await fetchAPI('get_live_streams', `&category_id=${catId}`);
             
             const chanSelect = document.getElementById('channelSelect');
             chanSelect.innerHTML = '<option>চ্যানেল সিলেক্ট করুন...</option>';
@@ -74,9 +77,10 @@
             const video = document.getElementById('video');
             
             if (Hls.isSupported()) {
-                const hls = new Hls();
-                hls.loadSource(videoUrl);
-                hls.attachMedia(video);
+                if(window.hls) window.hls.destroy();
+                window.hls = new Hls();
+                window.hls.loadSource(videoUrl);
+                window.hls.attachMedia(video);
                 video.play();
             }
         }
