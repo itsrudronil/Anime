@@ -3,98 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live TV Portal</title>
+    <title>Live TV Player</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
-        body { font-family: sans-serif; background: #0f172a; color: white; padding: 15px; text-align: center; }
-        select { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px; background: #1e293b; color: white; border: 1px solid #334155; }
-        video { width: 100%; max-width: 800px; background: black; display: block; margin: 20px auto; border-radius: 8px; border: 2px solid #334155; }
+        body { font-family: sans-serif; background: #0f172a; color: white; padding: 20px; text-align: center; }
+        select { width: 100%; max-width: 500px; padding: 12px; margin-bottom: 20px; border-radius: 8px; background: #1e293b; color: white; border: 1px solid #334155; }
+        video { width: 100%; max-width: 800px; background: black; display: block; margin: 0 auto; border-radius: 8px; border: 2px solid #334155; }
     </style>
 </head>
 <body>
 
-    <h2>Live TV Player</h2>
-    
-    <select id="catSelect" onchange="loadChannels()">
-        <option>ক্যাটাগরি সিলেক্ট করুন...</option>
-    </select>
-    
+    <h2>লাইভ টিভি পোর্টাল</h2>
     <select id="channelSelect" onchange="playChannel()">
-        <option>চ্যানেল সিলেক্ট করুন...</option>
+        <option>চ্যানেল লোড হচ্ছে...</option>
     </select>
-
     <video id="video" controls autoplay></video>
 
     <script>
-        const BASE_URL = 'http://starter.nvisionbd.net';
-        const USERNAME = 'talukderrudronil';
-        const PASSWORD = 'talRudronil8';
-
-        // আগের fetchAPI ফাংশনটি সরিয়ে এটি বসান
-async function fetchAPI(action, extraParams = '') {
-    const url = `${BASE_URL}/player_api.php?username=${USERNAME}&password=${PASSWORD}&action=${action}${extraParams}`;
-    
-    // এখানে আমরা corsproxy.io ব্যবহার করছি যা খুব শক্তিশালী
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-    
-    try {
-        const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error('Network response was not ok');
-        return await response.json();
-    } catch (error) {
-        console.error("API Error:", error);
-        throw error;
-    }
-}
-
-
-
-        async function loadCategories() {
+        // আপনার GitHub M3U লিংক
+        const M3U_URL = 'https://raw.githubusercontent.com/bugsfreeweb/LiveTVCollector/refs/heads/main/LiveTV/Bangladesh/LiveTV.m3u';
+        
+        async function loadChannels() {
             try {
-                const data = await fetchAPI('get_live_categories');
-                const catSelect = document.getElementById('catSelect');
-                catSelect.innerHTML = '<option>ক্যাটাগরি সিলেক্ট করুন</option>';
-                data.forEach(cat => {
-                    let opt = document.createElement('option');
-                    opt.value = cat.category_id;
-                    opt.innerHTML = cat.category_name;
-                    catSelect.appendChild(opt);
+                // প্রতিটি রিকোয়েস্টে নতুন টাইমস্ট্যাম্প যোগ করা হয়েছে যেন ক্যাশ না হয়
+                const response = await fetch(M3U_URL + '?t=' + new Date().getTime());
+                const data = await response.text();
+                
+                const lines = data.split('\n');
+                const select = document.getElementById('channelSelect');
+                select.innerHTML = '<option>চ্যানেল সিলেক্ট করুন</option>';
+                
+                let currentName = '';
+                lines.forEach(line => {
+                    if (line.startsWith('#EXTINF')) {
+                        currentName = line.split(',')[1];
+                    } else if (line.startsWith('http')) {
+                        let opt = document.createElement('option');
+                        opt.value = line;
+                        opt.innerHTML = currentName;
+                        select.appendChild(opt);
+                        currentName = '';
+                    }
                 });
             } catch (e) {
-                console.error(e);
-                alert("সার্ভার থেকে ডেটা আসছে না। দয়া করে ইন্টারনেট কানেকশন চেক করুন।");
+                alert("চ্যানেল লিস্ট লোড হয়নি! পেজটি রিফ্রেশ করুন।");
             }
         }
 
-        async function loadChannels() {
-            const catId = document.getElementById('catSelect').value;
-            const data = await fetchAPI('get_live_streams', `&category_id=${catId}`);
-            
-            const chanSelect = document.getElementById('channelSelect');
-            chanSelect.innerHTML = '<option>চ্যানেল সিলেক্ট করুন...</option>';
-            data.forEach(stream => {
-                let opt = document.createElement('option');
-                opt.value = stream.stream_id;
-                opt.innerHTML = stream.name;
-                chanSelect.appendChild(opt);
-            });
-        }
-
         function playChannel() {
-            const streamId = document.getElementById('channelSelect').value;
-            const videoUrl = `${BASE_URL}/live/${USERNAME}/${PASSWORD}/${streamId}.m3u8`;
+            const url = document.getElementById('channelSelect').value;
             const video = document.getElementById('video');
-            
             if (Hls.isSupported()) {
-                if(window.hls) window.hls.destroy();
-                window.hls = new Hls();
-                window.hls.loadSource(videoUrl);
-                window.hls.attachMedia(video);
+                const hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
                 video.play();
             }
         }
 
-        loadCategories();
+        loadChannels();
     </script>
 </body>
 </html>
