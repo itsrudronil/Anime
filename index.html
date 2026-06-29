@@ -34,11 +34,17 @@
 async function fetchAPI(action, extraParams = '') {
     const url = `${BASE_URL}/player_api.php?username=${USERNAME}&password=${PASSWORD}&action=${action}${extraParams}`;
     
-    // আপনার নিজের সার্ভারের proxy.php ব্যবহার করা হচ্ছে
-    const proxyUrl = `proxy.php?url=${encodeURIComponent(url)}`;
+    // এখানে আমরা corsproxy.io ব্যবহার করছি যা খুব শক্তিশালী
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
     
-    const response = await fetch(proxyUrl);
-    return await response.json();
+    try {
+        const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error('Network response was not ok');
+        return await response.json();
+    } catch (error) {
+        console.error("API Error:", error);
+        throw error;
+    }
 }
 
 
