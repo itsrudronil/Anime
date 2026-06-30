@@ -5,19 +5,18 @@
     <title>Live TV Player</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
-        body { font-family: sans-serif; background: #0f172a; color: white; padding: 15px; text-align: center; }
-        input, select { width: 100%; max-width: 500px; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: white; box-sizing: border-box; }
-        video { width: 100%; max-width: 800px; background: black; display: block; margin: 0 auto; border-radius: 8px; border: 2px solid #334155; }
+        body { font-family: sans-serif; background: #000; color: white; padding: 10px; text-align: center; }
+        input, select { width: 100%; max-width: 400px; padding: 10px; margin-bottom: 10px; border-radius: 5px; }
+        video { width: 100%; max-width: 700px; background: black; display: block; margin: 10px auto; }
     </style>
 </head>
 <body>
 
-    <h2>Live TV Player</h2>
-    <input type="text" id="searchInput" placeholder="চ্যানেল সার্চ করুন..." onkeyup="filterChannels()">
+    <input type="text" id="searchInput" placeholder="চ্যানেল খুঁজুন..." onkeyup="filterChannels()">
     <select id="channelSelect" onchange="playChannel()">
         <option>চ্যানেল লোড হচ্ছে...</option>
     </select>
-    <video id="video" controls autoplay></video>
+    <video id="video" controls playsinline></video>
 
     <script>
         const API_URL = 'http://starter.nvisionbd.net/player_api.php?username=talukderrudronil&password=talRudronil8&action=get_live_streams';
@@ -25,13 +24,13 @@
 
         async function fetchChannels() {
             try {
-                // ব্রাউজারের CORS সমস্যা এড়াতে প্রক্সি ব্যবহার করছি
+                // প্রক্সি ব্যবহার করছি ডেটা আনার জন্য
                 const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(API_URL)}`);
                 const data = await response.json();
                 allChannels = JSON.parse(data.contents);
                 renderSelect(allChannels);
             } catch (e) {
-                alert("চ্যানেল লোড হতে সমস্যা হয়েছে!");
+                alert("সার্ভার থেকে ডেটা আসছে না!");
             }
         }
 
@@ -56,11 +55,21 @@
             const streamId = document.getElementById('channelSelect').value;
             const videoUrl = `http://starter.nvisionbd.net/live/talukderrudronil/talRudronil8/${streamId}.m3u8`;
             const video = document.getElementById('video');
+            
+            // HLS প্লেয়ার ইনিশিয়ালাইজেশন
             if (Hls.isSupported()) {
-                if(window.hls) window.hls.destroy();
-                window.hls = new Hls();
+                if (window.hls) window.hls.destroy();
+                window.hls = new Hls({
+                    // কিছু বাড়তি কনফিগ যা ভিডিও চলতে সাহায্য করবে
+                    xhrSetup: function(xhr, url) {
+                        xhr.withCredentials = false;
+                    }
+                });
                 window.hls.loadSource(videoUrl);
                 window.hls.attachMedia(video);
+                window.hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = videoUrl;
                 video.play();
             }
         }
