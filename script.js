@@ -1,4 +1,3 @@
-// script.js
 import { getChannels } from './api.js';
 
 let allChannels = [];
@@ -7,12 +6,8 @@ const searchInput = document.getElementById('searchInput');
 const video = document.getElementById('video');
 
 async function init() {
-    try {
-        allChannels = await getChannels();
-        renderSelect(allChannels);
-    } catch (e) {
-        alert("সার্ভার থেকে ডেটা আসছে না!");
-    }
+    allChannels = await getChannels();
+    renderSelect(allChannels);
 }
 
 function renderSelect(channels) {
@@ -33,6 +28,8 @@ searchInput.addEventListener('keyup', () => {
 
 channelSelect.addEventListener('change', () => {
     const streamId = channelSelect.value;
+    if (!streamId) return;
+    
     const videoUrl = `http://starter.nvisionbd.net/live/talukderrudronil/talRudronil8/${streamId}.m3u8`;
     
     if (Hls.isSupported()) {
