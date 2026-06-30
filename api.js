@@ -1,4 +1,9 @@
 export async function getChannels() {
-    const response = await fetch('channels.json'); // তোমার লোকাল ফাইল
-    return await response.json();
+    try {
+        const response = await fetch('channels.json?t=' + new Date().getTime());
+        return await response.json();
+    } catch (error) {
+        console.error("JSON লোড করতে সমস্যা:", error);
+        return [];
+    }
 }
